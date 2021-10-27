@@ -1,0 +1,14 @@
+{
+  "name": "moonshine-openfl-debug-adapter-client",
+  "url": "https://github.com/Moonshine-IDE/moonshine-openfl-debug-adapter-client",
+  "license": "MIT",
+  "tags": ["openfl", "moonshine", "debug-adapter-protocol"],
+  "description": "An implementation of the editor/IDE side of the debug adapter protocol",
+  "version": "1.0.0-alpha.1",
+  "releasenote": "Initial release.",
+  "contributors": ["bowlerhat"],
+  "classPath": "src",
+  "dependencies": {
+    "openfl": ""
+  }
+}

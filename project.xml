@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	
+	<meta title="moonshine-openfl-debug-adapter-client" package="moonshine.openfl-debug-adapter-client" version="1.0.0" company="Prominic.NET" />
+	<app main="openfl.display.Sprite" file="moonshine-openfl-debug-adapter-client" />
+
+	<window allow-high-dpi="true"/>
+	<window fps="60"/>
+	
+	<source path="src" />
+	
+	<haxelib name="openfl" />
+
+	<template path="templates" if="flash"/>
+
+	<haxeflag name="--macro" value="include('moonshine.dsp')"/>
+</project>

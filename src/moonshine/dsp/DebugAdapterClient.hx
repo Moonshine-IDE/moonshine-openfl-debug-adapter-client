@@ -322,7 +322,7 @@ class DebugAdapterClient extends EventDispatcher {
 			_messageBytes.clear();
 			_contentLength = -1;
 			object = Json.parse(message);
-		} catch (error) {
+		} catch (error:Dynamic) {
 			trace("Error: Debug adapter client failed to parse JSON.");
 			return;
 		}

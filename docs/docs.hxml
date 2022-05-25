@@ -1,0 +1,4 @@
+-cmd haxelib run openfl build ../project.xml html5 -xml -clean
+
+--next
+-cmd haxelib run dox -o ../bin/api -i ../bin/html5/types.xml -in moonshine.dsp --title "Debug Adapter Client for OpenFL API Reference" --toplevel-package moonshine.dsp -D website "https://moonshine-ide.com" -D source-path "https://github.com/Moonshine-IDE/moonshine-openfl-debug-adapter-client/tree/master/src/"

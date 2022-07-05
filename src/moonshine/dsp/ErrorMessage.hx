@@ -24,8 +24,14 @@ package moonshine.dsp;
 	Moonshine IDE or to a particular language. Create a subclass for new
 	properties or create a utility function for methods.
 
-	@see https://microsoft.github.io/debug-adapter-protocol/specification#errorresponse
+	@see https://microsoft.github.io/debug-adapter-protocol/specification#message
 **/
-typedef ErrorResponseBody = {
-	?error:ErrorMessage,
+typedef ErrorMessage = {
+	id:Float,
+	format:String,
+	?variables:Any,
+	?sendTelemetry:Bool,
+	?showUser:Bool,
+	?url:String,
+	?urlLabel:String,
 }

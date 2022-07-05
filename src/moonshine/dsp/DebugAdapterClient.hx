@@ -109,21 +109,22 @@ class DebugAdapterClient extends EventDispatcher {
 	private var _protocolEventListeners:Map<String, Array<(event:DebugProtocolEvent) -> Void>> = [];
 
 	private var _idToRequest:Map<Int, DebugProtocolRequest> = [];
-	private var _initializeLookup:Map<Int, ArgsAndCallback<InitializeRequestArguments, (Capabilities) -> Void>> = [];
-	private var _configurationDoneLookup:Map<Int, ArgsAndCallback<ConfigurationDoneArguments, () -> Void>> = [];
-	private var _attachLookup:Map<Int, ArgsAndCallback<AttachRequestArguments, () -> Void>> = [];
-	private var _launchLookup:Map<Int, ArgsAndCallback<LaunchRequestArguments, () -> Void>> = [];
-	private var _disconnectLookup:Map<Int, ArgsAndCallback<DisconnectArguments, () -> Void>> = [];
-	private var _threadsLookup:Map<Int, ArgsAndCallback<Any, (ThreadsResponseBody) -> Void>> = [];
-	private var _setBreakpointsLookup:Map<Int, ArgsAndCallback<SetBreakpointsArguments, (SetBreakpointsResponseBody) -> Void>> = [];
-	private var _stackTraceLookup:Map<Int, ArgsAndCallback<StackTraceArguments, (StackTraceResponseBody) -> Void>> = [];
-	private var _scopesLookup:Map<Int, ArgsAndCallback<ScopesArguments, (ScopesResponseBody) -> Void>> = [];
-	private var _variablesLookup:Map<Int, ArgsAndCallback<VariablesArguments, (VariablesResponseBody) -> Void>> = [];
-	private var _pauseLookup:Map<Int, ArgsAndCallback<PauseArguments, () -> Void>> = [];
-	private var _continueLookup:Map<Int, ArgsAndCallback<ContinueArguments, (ContinueResponseBody) -> Void>> = [];
-	private var _stepInLookup:Map<Int, ArgsAndCallback<StepInArguments, () -> Void>> = [];
-	private var _stepOutLookup:Map<Int, ArgsAndCallback<StepOutArguments, () -> Void>> = [];
-	private var _nextLookup:Map<Int, ArgsAndCallback<NextArguments, () -> Void>> = [];
+	private var _initializeLookup:Map<Int, ArgsAndCallbacks<InitializeRequestArguments, (Capabilities) -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _configurationDoneLookup:Map<Int, ArgsAndCallbacks<ConfigurationDoneArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _attachLookup:Map<Int, ArgsAndCallbacks<AttachRequestArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _launchLookup:Map<Int, ArgsAndCallbacks<LaunchRequestArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _disconnectLookup:Map<Int, ArgsAndCallbacks<DisconnectArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _threadsLookup:Map<Int, ArgsAndCallbacks<Any, (ThreadsResponseBody) -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _setBreakpointsLookup:Map<Int,
+		ArgsAndCallbacks<SetBreakpointsArguments, (SetBreakpointsResponseBody) -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _stackTraceLookup:Map<Int, ArgsAndCallbacks<StackTraceArguments, (StackTraceResponseBody) -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _scopesLookup:Map<Int, ArgsAndCallbacks<ScopesArguments, (ScopesResponseBody) -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _variablesLookup:Map<Int, ArgsAndCallbacks<VariablesArguments, (VariablesResponseBody) -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _pauseLookup:Map<Int, ArgsAndCallbacks<PauseArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _continueLookup:Map<Int, ArgsAndCallbacks<ContinueArguments, (ContinueResponseBody) -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _stepInLookup:Map<Int, ArgsAndCallbacks<StepInArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _stepOutLookup:Map<Int, ArgsAndCallbacks<StepOutArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
+	private var _nextLookup:Map<Int, ArgsAndCallbacks<NextArguments, () -> Void, (ErrorResponseBody) -> Void>> = [];
 
 	public function addProtocolEventListener(method:String, listener:(DebugProtocolEvent) -> Void):Void {
 		if (!_protocolEventListeners.exists(method)) {
@@ -152,95 +153,95 @@ class DebugAdapterClient extends EventDispatcher {
 		listeners.splice(index, 1);
 	}
 
-	public function initialize(args:InitializeRequestArguments, callback:(Capabilities) -> Void):Void {
+	public function initialize(args:InitializeRequestArguments, onSuccess:(Capabilities) -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		if (_calledInitialize) {
 			throw new IllegalOperationError('Cannot call initialize() more than once');
 		}
 		_calledInitialize = true;
 		_inputDispatcher.addEventListener(_inputEventType, debugAdapterClient_input_onData);
 		var seq = sendRequest(COMMAND_INITIALIZE, args);
-		_initializeLookup.set(seq, new ArgsAndCallback(args, callback));
+		_initializeLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function configurationDone(args:ConfigurationDoneArguments, callback:() -> Void):Void {
+	public function configurationDone(args:ConfigurationDoneArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_CONFIGURATION_DONE, args);
-		_configurationDoneLookup.set(seq, new ArgsAndCallback(args, callback));
+		_configurationDoneLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function attach(args:AttachRequestArguments, callback:() -> Void):Void {
+	public function attach(args:AttachRequestArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		_waitingForLaunchOrAttach = true;
 		var seq = sendRequest(COMMAND_ATTACH, args);
-		_attachLookup.set(seq, new ArgsAndCallback(args, callback));
+		_attachLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function launch(args:LaunchRequestArguments, callback:() -> Void):Void {
+	public function launch(args:LaunchRequestArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		_waitingForLaunchOrAttach = true;
 		var seq = sendRequest(COMMAND_LAUNCH, args);
-		_launchLookup.set(seq, new ArgsAndCallback(args, callback));
+		_launchLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function disconnect(args:DisconnectArguments, callback:() -> Void):Void {
+	public function disconnect(args:DisconnectArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		if (_receivedInitializeResponse && !_waitingForLaunchOrAttach) {
 			var seq = sendRequest(COMMAND_DISCONNECT, args);
-			_disconnectLookup.set(seq, new ArgsAndCallback(args, callback));
+			_disconnectLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 		} else {
 			// if we haven't yet received a response to the initialize
 			// request or if we're waiting for a response to attach/launch,
 			// then we need to force the debug adapter to stop because it
 			// won't be able to handle the disconnect request
 			handleDisconnectOrTerminated();
-			callback();
+			onSuccess();
 		}
 	}
 
-	public function threads(args:Any, callback:(ThreadsResponseBody) -> Void):Void {
+	public function threads(args:Any, onSuccess:(ThreadsResponseBody) -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_THREADS, args);
-		_threadsLookup.set(seq, new ArgsAndCallback(args, callback));
+		_threadsLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function setBreakpoints(args:SetBreakpointsArguments, callback:(SetBreakpointsResponseBody) -> Void):Void {
+	public function setBreakpoints(args:SetBreakpointsArguments, onSuccess:(SetBreakpointsResponseBody) -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_SET_BREAKPOINTS, args);
-		_setBreakpointsLookup.set(seq, new ArgsAndCallback(args, callback));
+		_setBreakpointsLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function stackTrace(args:StackTraceArguments, callback:(StackTraceResponseBody) -> Void):Void {
+	public function stackTrace(args:StackTraceArguments, onSuccess:(StackTraceResponseBody) -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_STACK_TRACE, args);
-		_stackTraceLookup.set(seq, new ArgsAndCallback(args, callback));
+		_stackTraceLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function scopes(args:ScopesArguments, callback:(ScopesResponseBody) -> Void):Void {
+	public function scopes(args:ScopesArguments, onSuccess:(ScopesResponseBody) -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_SCOPES, args);
-		_scopesLookup.set(seq, new ArgsAndCallback(args, callback));
+		_scopesLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function variables(args:VariablesArguments, callback:(VariablesResponseBody) -> Void):Void {
+	public function variables(args:VariablesArguments, onSuccess:(VariablesResponseBody) -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_VARIABLES, args);
-		_variablesLookup.set(seq, new ArgsAndCallback(args, callback));
+		_variablesLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function pauseThread(args:ContinueArguments, callback:() -> Void):Void {
+	public function pauseThread(args:ContinueArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_PAUSE, args);
-		_pauseLookup.set(seq, new ArgsAndCallback(args, callback));
+		_pauseLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function continueThread(args:ContinueArguments, callback:(ContinueResponseBody) -> Void):Void {
+	public function continueThread(args:ContinueArguments, onSuccess:(ContinueResponseBody) -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_CONTINUE, args);
-		_continueLookup.set(seq, new ArgsAndCallback(args, callback));
+		_continueLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function stepIn(args:StepInArguments, callback:() -> Void):Void {
+	public function stepIn(args:StepInArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_STEP_IN, args);
-		_stepInLookup.set(seq, new ArgsAndCallback(args, callback));
+		_stepInLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function stepOut(args:StepOutArguments, callback:() -> Void):Void {
+	public function stepOut(args:StepOutArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_STEP_OUT, args);
-		_stepOutLookup.set(seq, new ArgsAndCallback(args, callback));
+		_stepOutLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
-	public function next(args:NextArguments, callback:() -> Void):Void {
+	public function next(args:NextArguments, onSuccess:() -> Void, ?onError:(ErrorResponseBody) -> Void):Void {
 		var seq = sendRequest(COMMAND_NEXT, args);
-		_nextLookup.set(seq, new ArgsAndCallback(args, callback));
+		_nextLookup.set(seq, new ArgsAndCallbacks(args, onSuccess, onError));
 	}
 
 	private function sendRequest(command:String, args:Any = null):Int {
@@ -354,113 +355,169 @@ class DebugAdapterClient extends EventDispatcher {
 		}
 		var requestID = Std.int(response.request_seq);
 		var originalRequest = _idToRequest.get(requestID);
-		_idToRequest.remove(requestID);
-		if (response.success != true) {
-			trace('Error: Debug adapter request failed. Command: ${originalRequest.command}, Message: ${response.message}');
-			if (debugMode) {
-				trace('Failed Request: ${Json.stringify(originalRequest)}');
-			}
-			if (response.command == COMMAND_INITIALIZE) {
-				handleProtocolEvent({
-					type: MESSAGE_TYPE_EVENT,
-					seq: 0,
-					event: EVENT_TERMINATED
-				});
-			}
-			return;
+		if (debugMode && response.success != true) {
+			trace('Failed Request: ${Json.stringify(originalRequest)}');
 		}
+		_idToRequest.remove(requestID);
 		switch (response.command) {
 			case COMMAND_INITIALIZE:
 				if (_initializeLookup.exists(requestID)) {
 					_receivedInitializeResponse = true;
-					var paramsAndCallback = _initializeLookup.get(requestID);
+					var paramsAndCallbacks = _initializeLookup.get(requestID);
 					_initializeLookup.remove(requestID);
-					paramsAndCallback.callback((response.body : Capabilities));
+					if (response.success) {
+						paramsAndCallbacks.onSuccess((response.body : Capabilities));
+					} else {
+						if (paramsAndCallbacks.onError != null) {
+							paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+						}
+						handleProtocolEvent({
+							type: MESSAGE_TYPE_EVENT,
+							seq: 0,
+							event: EVENT_TERMINATED
+						});
+					}
 				}
 			case COMMAND_CONFIGURATION_DONE:
 				if (_configurationDoneLookup.exists(requestID)) {
-					var paramsAndCallback = _configurationDoneLookup.get(requestID);
+					var paramsAndCallbacks = _configurationDoneLookup.get(requestID);
 					_configurationDoneLookup.remove(requestID);
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_ATTACH:
 				if (_attachLookup.exists(requestID)) {
-					var paramsAndCallback = _attachLookup.get(requestID);
+					var paramsAndCallbacks = _attachLookup.get(requestID);
 					_attachLookup.remove(requestID);
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_LAUNCH:
 				if (_launchLookup.exists(requestID)) {
-					var paramsAndCallback = _launchLookup.get(requestID);
+					var paramsAndCallbacks = _launchLookup.get(requestID);
 					_launchLookup.remove(requestID);
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_DISCONNECT:
 				if (_disconnectLookup.exists(requestID)) {
-					var paramsAndCallback = _disconnectLookup.get(requestID);
+					var paramsAndCallbacks = _disconnectLookup.get(requestID);
 					_disconnectLookup.remove(requestID);
 					handleDisconnectOrTerminated();
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_THREADS:
 				if (_threadsLookup.exists(requestID)) {
-					var paramsAndCallback = _threadsLookup.get(requestID);
+					var paramsAndCallbacks = _threadsLookup.get(requestID);
 					_threadsLookup.remove(requestID);
-					paramsAndCallback.callback((response.body : ThreadsResponseBody));
+					if (response.success) {
+						paramsAndCallbacks.onSuccess((response.body : ThreadsResponseBody));
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_SET_BREAKPOINTS:
 				if (_setBreakpointsLookup.exists(requestID)) {
-					var paramsAndCallback = _setBreakpointsLookup.get(requestID);
+					var paramsAndCallbacks = _setBreakpointsLookup.get(requestID);
 					_setBreakpointsLookup.remove(requestID);
-					paramsAndCallback.callback((response.body : SetBreakpointsResponseBody));
+					if (response.success) {
+						paramsAndCallbacks.onSuccess((response.body : SetBreakpointsResponseBody));
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_STACK_TRACE:
 				if (_stackTraceLookup.exists(requestID)) {
-					var paramsAndCallback = _stackTraceLookup.get(requestID);
+					var paramsAndCallbacks = _stackTraceLookup.get(requestID);
 					_stackTraceLookup.remove(requestID);
-					paramsAndCallback.callback((response.body : StackTraceResponseBody));
+					if (response.success) {
+						paramsAndCallbacks.onSuccess((response.body : StackTraceResponseBody));
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_SCOPES:
 				if (_scopesLookup.exists(requestID)) {
-					var paramsAndCallback = _scopesLookup.get(requestID);
+					var paramsAndCallbacks = _scopesLookup.get(requestID);
 					_scopesLookup.remove(requestID);
-					paramsAndCallback.callback((response.body : ScopesResponseBody));
+					if (response.success) {
+						paramsAndCallbacks.onSuccess((response.body : ScopesResponseBody));
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_VARIABLES:
 				if (_variablesLookup.exists(requestID)) {
-					var paramsAndCallback = _variablesLookup.get(requestID);
+					var paramsAndCallbacks = _variablesLookup.get(requestID);
 					_variablesLookup.remove(requestID);
-					paramsAndCallback.callback((response.body : VariablesResponseBody));
+					if (response.success) {
+						paramsAndCallbacks.onSuccess((response.body : VariablesResponseBody));
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_PAUSE:
 				if (_pauseLookup.exists(requestID)) {
-					var paramsAndCallback = _pauseLookup.get(requestID);
+					var paramsAndCallbacks = _pauseLookup.get(requestID);
 					_pauseLookup.remove(requestID);
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_CONTINUE:
 				if (_continueLookup.exists(requestID)) {
-					var paramsAndCallback = _continueLookup.get(requestID);
+					var paramsAndCallbacks = _continueLookup.get(requestID);
 					_continueLookup.remove(requestID);
-					paramsAndCallback.callback((response.body : ContinueResponseBody));
+					if (response.success) {
+						paramsAndCallbacks.onSuccess((response.body : ContinueResponseBody));
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_STEP_IN:
 				if (_stepInLookup.exists(requestID)) {
-					var paramsAndCallback = _stepInLookup.get(requestID);
+					var paramsAndCallbacks = _stepInLookup.get(requestID);
 					_stepInLookup.remove(requestID);
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_STEP_OUT:
 				if (_stepOutLookup.exists(requestID)) {
-					var paramsAndCallback = _stepOutLookup.get(requestID);
+					var paramsAndCallbacks = _stepOutLookup.get(requestID);
 					_stepOutLookup.remove(requestID);
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			case COMMAND_NEXT:
 				if (_nextLookup.exists(requestID)) {
-					var paramsAndCallback = _nextLookup.get(requestID);
+					var paramsAndCallbacks = _nextLookup.get(requestID);
 					_nextLookup.remove(requestID);
-					paramsAndCallback.callback();
+					if (response.success) {
+						paramsAndCallbacks.onSuccess();
+					} else if (paramsAndCallbacks.onError != null) {
+						paramsAndCallbacks.onError((response.body : ErrorResponseBody));
+					}
 				}
 			default:
 				if (debugMode) {
@@ -527,12 +584,14 @@ class DebugAdapterClient extends EventDispatcher {
 	}
 }
 
-private class ArgsAndCallback<ArgsType, CallbackType> {
+private class ArgsAndCallbacks<ArgsType, SuccessCallbackType, ErrorCallbackType> {
 	public var args:ArgsType;
-	public var callback:CallbackType;
+	public var onSuccess:SuccessCallbackType;
+	public var onError:ErrorCallbackType;
 
-	public function new(args:ArgsType, callback:CallbackType) {
+	public function new(args:ArgsType, onSuccess:SuccessCallbackType, onError:ErrorCallbackType) {
 		this.args = args;
-		this.callback = callback;
+		this.onSuccess = onSuccess;
+		this.onError = onError;
 	}
 }

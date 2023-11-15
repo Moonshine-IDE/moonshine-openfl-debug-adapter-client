@@ -26,8 +26,8 @@ package moonshine.dsp;
 
 	@see https://microsoft.github.io/debug-adapter-protocol/specification#steppinggranularity
 **/
-@:enum
-abstract SteppingGranularity(String) from String to String {
+#if haxe4 enum #else @:enum #end abstract SteppingGranularity(String) from String to String {
+
 	var Statement = "statement";
 	var Line = "line";
 	var Instruction = "instruction";

@@ -579,6 +579,10 @@ class DebugAdapterClient extends EventDispatcher {
 	}
 
 	private function debugAdapterClient_input_onData(event:Event):Void {
+		if (_input.bytesAvailable == 0) {
+			// standardOutput may have been closed
+			return;
+		}
 		_messageBuffer += _input.readUTFBytes(_input.bytesAvailable);
 		parseMessageBuffer();
 	}
